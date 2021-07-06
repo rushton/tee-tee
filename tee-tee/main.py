@@ -3,10 +3,15 @@ import math
 from typing import List, Optional
 
 from pydantic import BaseModel
+from quine_mccluskey.qm import QuineMcCluskey
+import typer
 
 
 class LogicalOperator(BaseModel):
     representation: str
+
+    def __add__(self, operand: "LogicalOperator"):
+        return self
 
 
 class BinaryOperator(LogicalOperator):
@@ -21,11 +26,22 @@ class BinaryOperator(LogicalOperator):
         return self.__class__(left=self, right=operand)
 
     def __str__(self):
-        left = f"{self.left}" if isinstance(self.left, Variable) else f"({self.left})"
-        right = (
-            f"{self.right}" if isinstance(self.right, Variable) else f"({self.right})"
-        )
-        return f"{left} {self.representation} {right}"
+        if not self.left and not self.right:
+            return ""
+        if not self.left:
+            return str(self.right)
+        if not self.right:
+            return str(self.left)
+        else:
+            left = (
+                f"{self.left}" if isinstance(self.left, Variable) else f"({self.left})"
+            )
+            right = (
+                f"{self.right}"
+                if isinstance(self.right, Variable)
+                else f"({self.right})"
+            )
+            return f"{left} {self.representation} {right}"
 
 
 class And(BinaryOperator):
@@ -82,24 +98,33 @@ def find_equation(tt_output) -> LogicalOperator:
     variables = [chr(65 + i) for i in range(num_variables)]
     tt = generate_tt(num_variables)
     func: LogicalOperator = Or()
-    for idx, result in enumerate(tt_output):
-        row = tt[idx]
-        if result:
-            operand = And()
-            for variable, variable_result in zip(variables, row):
-                variable = Variable(representation=variable)
-                if not variable_result:
-                    variable = Not(operand=variable)
-                operand += variable
-            func += operand
+    qm = QuineMcCluskey()
+    ones = [idx for idx, o in enumerate(reversed(tt_output)) if o]
+
+    # special case because the qm library breaks in
+    # this case
+    if ones == [0]:
+        func = And()
+        for variable in variables:
+            func += Not(operand=Variable(representation=variable))
+        return func
+
+    for prime_implicant in qm.simplify(ones):
+        node = And()
+        for idx, variable in enumerate(prime_implicant):
+            if variable == "0":
+                node += Not(operand=Variable(representation=variables[idx]))
+            if variable == "1":
+                node += Variable(representation=variables[idx])
+        func += node
 
     return func
 
 
-def main():
-    tt_output = [x == "1" for x in list(sys.argv[1])]
-    print(find_equation(tt_output))
+def main(truth_table: str):
+    tt_output = [x == "1" for x in list(truth_table)]
+    typer.echo(find_equation(tt_output))
 
 
 if __name__ == "__main__":
-    main()
+    typer.run(main)
