@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tee-tee"
-version = "0.1.1"
+version = "0.1.2"
 description = "Truth table utility"
 authors = ["Nick Rushton <rushton.nicholas@gmail.com>"]
 license = "Apache 2.0"

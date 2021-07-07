@@ -102,7 +102,11 @@ def find_equation(tt_output: List[str]) -> LogicalOperator:
     ones = [idx for idx, o in enumerate(tt_output) if o == "1"]
     dont_cares = [idx for idx, o in enumerate(tt_output) if o == "-"]
 
-    for prime_implicant in qm.simplify(ones, dc=dont_cares, num_bits=num_variables):
+    prime_implicants = qm.simplify(ones, dc=dont_cares, num_bits=num_variables)
+    if not prime_implicants:
+        raise Exception("Boolean expression not possible for this truth table")
+
+    for prime_implicant in prime_implicants:
         node = And()
         for idx, variable in enumerate(prime_implicant):
             if variable == "0":
@@ -115,7 +119,11 @@ def find_equation(tt_output: List[str]) -> LogicalOperator:
 
 
 def main(truth_table: str):
-    typer.echo(find_equation(list(reversed(truth_table))))
+    try:
+        typer.echo(find_equation(list(reversed(truth_table))))
+    except Exception as e:
+        typer.echo(f"ERROR: {e}")
+        typer.Exit(1)
 
 
 def run():
