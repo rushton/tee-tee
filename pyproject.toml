@@ -7,6 +7,8 @@ license = "Apache 2.0"
 packages=[
     {include = "tee-tee"}
 ]
+[tool.poetry.scripts]
+tt='tee_tee.main:run'
 
 [tool.poetry.dependencies]
 python = "^3.8"

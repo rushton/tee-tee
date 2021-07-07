@@ -85,12 +85,12 @@ def generate_tt(num_variables: int) -> List[List[bool]]:
     return tt
 
 
-def find_equation(tt_output) -> LogicalOperator:
+def find_equation(tt_output: List[str]) -> LogicalOperator:
     """
     Given a truth tables resolution, determines
     the general function for the truth table.
     """
-    num_variables = math.log(len(tt_output), 2)
+    num_variables = max(1.0, math.log(len(tt_output), 2))
     if not num_variables.is_integer():
         raise Exception("Truth table length is not a log of 2")
 
@@ -99,17 +99,10 @@ def find_equation(tt_output) -> LogicalOperator:
     tt = generate_tt(num_variables)
     func: LogicalOperator = Or()
     qm = QuineMcCluskey()
-    ones = [idx for idx, o in enumerate(reversed(tt_output)) if o]
+    ones = [idx for idx, o in enumerate(tt_output) if o == "1"]
+    dont_cares = [idx for idx, o in enumerate(tt_output) if o == "-"]
 
-    # special case because the qm library breaks in
-    # this case
-    if ones == [0]:
-        func = And()
-        for variable in variables:
-            func += Not(operand=Variable(representation=variable))
-        return func
-
-    for prime_implicant in qm.simplify(ones):
+    for prime_implicant in qm.simplify(ones, dc=dont_cares, num_bits=num_variables):
         node = And()
         for idx, variable in enumerate(prime_implicant):
             if variable == "0":
@@ -122,9 +115,12 @@ def find_equation(tt_output) -> LogicalOperator:
 
 
 def main(truth_table: str):
-    tt_output = [x == "1" for x in list(truth_table)]
-    typer.echo(find_equation(tt_output))
+    typer.echo(find_equation(list(reversed(truth_table))))
+
+
+def run():
+    typer.run(main)
 
 
 if __name__ == "__main__":
-    typer.run(main)
+    run()
