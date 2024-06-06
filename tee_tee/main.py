@@ -1,10 +1,17 @@
 import sys
 import math
 from typing import List, Optional
+import string
 
 from pydantic import BaseModel
 from quine_mccluskey.qm import QuineMcCluskey
 import typer
+from rich.console import Console
+from rich.table import Table
+
+
+app = typer.Typer()
+console = Console()
 
 
 class LogicalOperator(BaseModel):
@@ -70,21 +77,6 @@ class Variable(LogicalOperator):
         return self.representation
 
 
-def generate_tt(num_variables: int) -> List[List[bool]]:
-    """
-    Generates a truth table for all boolean combinations
-    of the possible variables.
-    """
-    tt = []
-    # the binary representation of each number in the
-    # range 0..(2^num_variables) gives us all
-    # possibilities for the truth table
-    # using this because it is compact and simple
-    for i in range(int(math.pow(2, num_variables))):
-        tt.append([x == "0" for x in list(f"{{0:0{num_variables}b}}".format(i))])
-    return tt
-
-
 def find_equation(tt_output: List[str]) -> LogicalOperator:
     """
     Given a truth tables resolution, determines
@@ -118,7 +110,38 @@ def find_equation(tt_output: List[str]) -> LogicalOperator:
     return func
 
 
-def main(truth_table: str):
+def generate_tt(num_variables: int) -> List[List[bool]]:
+    """
+    Generates a truth table for all boolean combinations
+    of the possible variables.
+    """
+    tt = []
+    # the binary representation of each number in the
+    # range 0..(2^num_variables) gives us all
+    # possibilities for the truth table
+    # using this because it is compact and simple
+    for i in range(int(math.pow(2, num_variables))):
+        tt.append([x == "0" for x in list(f"{{0:0{num_variables}b}}".format(i))])
+    return tt
+
+
+@app.command()
+def truth_table(num_variables: int, csv_format: bool = False):
+    variables = [string.ascii_uppercase[i] for i in range(num_variables)]
+    tt = generate_tt(num_variables)
+    if not csv_format:
+        table = Table(*variables)
+        for row in tt:
+            table.add_row(*[str(1 if cell else 0) for cell in row])
+        console.print(table)
+    else:
+        print(",".join(variables))
+        for row in tt:
+            print(",".join([str(1 if cell else 0) for cell in row]))
+
+
+@app.command()
+def boolean_expression(truth_table: str):
     try:
         typer.echo(find_equation(list(reversed(truth_table))))
     except Exception as e:
@@ -126,9 +149,5 @@ def main(truth_table: str):
         typer.Exit(1)
 
 
-def run():
-    typer.run(main)
-
-
 if __name__ == "__main__":
-    run()
+    app()
